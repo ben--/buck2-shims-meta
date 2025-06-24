@@ -113,11 +113,13 @@ def _update_headers_with_src_headers(src_headers, out_headers):
     return out_headers
 
 def prebuilt_cpp_library(
+        name,
         headers = None,
         linker_flags = None,
         private_linker_flags = None,
         **kwargs):
     prelude.prebuilt_cxx_library(
+        name = name,
         exported_headers = headers,
         exported_linker_flags = linker_flags,
         linker_flags = private_linker_flags,
@@ -196,6 +198,7 @@ def cpp_library(
     )
 
 def cpp_unittest(
+        name,
         deps = [],
         external_deps = [],
         visibility = ["PUBLIC"],
@@ -219,6 +222,7 @@ def cpp_unittest(
         deps = deps + CPP_UNITTEST_DEPS
 
     prelude.cxx_test(
+        name = name,
         deps = _fix_deps(deps + external_deps_to_targets(external_deps)),
         visibility = visibility,
         resources = _fix_resources(resources),
@@ -248,6 +252,7 @@ def cpp_binary(
     )
 
 def rust_library(
+        name,
         edition = None,
         rustc_flags = [],
         deps = [],
@@ -271,6 +276,7 @@ def rust_library(
     visibility = ["PUBLIC"]
 
     prelude.rust_library(
+        name = name,
         edition = edition or _default_rust_edition(),
         rustc_flags = rustc_flags + [_CFG_BUCK_BUILD],
         deps = deps,
@@ -280,6 +286,7 @@ def rust_library(
     )
 
 def rust_binary(
+        name,
         edition = None,
         rustc_flags = [],
         deps = [],
@@ -294,6 +301,7 @@ def rust_binary(
 
     # @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
     prelude.rust_binary(
+        name = name,
         edition = edition or _default_rust_edition(),
         rustc_flags = rustc_flags + [_CFG_BUCK_BUILD],
         deps = deps,
@@ -302,6 +310,7 @@ def rust_binary(
     )
 
 def rust_unittest(
+        name,
         edition = None,
         rustc_flags = [],
         deps = [],
@@ -310,6 +319,7 @@ def rust_unittest(
     deps = _fix_deps(deps)
 
     prelude.rust_test(
+        name = name,
         edition = edition or _default_rust_edition(),
         rustc_flags = rustc_flags + [_CFG_BUCK_BUILD],
         deps = deps,
@@ -397,12 +407,14 @@ proto_srcs = rule(
 )
 
 def ocaml_binary(
+        name,
         deps = [],
         visibility = ["PUBLIC"],
         **kwargs):
     deps = _fix_deps(deps)
 
     prelude.ocaml_binary(
+        name = name,
         deps = deps,
         visibility = visibility,
         **kwargs
