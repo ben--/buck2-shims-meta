@@ -6,5 +6,14 @@
 # of this source tree. You may select, at your option, one of the
 # above-listed licenses.
 
-def fb_xplat_cxx_library(**kwargs):
-    pass
+def is_fbcode_compatible():
+    return False
+
+def is_fbcode_mode_mac():
+    return False
+
+def is_fbcode_mode_win():
+    return False
+
+def is_xplat():
+    return False
