@@ -6,5 +6,88 @@
 # of this source tree. You may select, at your option, one of the
 # above-listed licenses.
 
-def rust_bindgen_library(**kwargs):
-    pass
+def rust_bindgen_library(name: str, header: str, **kwargs):
+    _buck_genrule(
+        name = name + "--bindings.rs",
+        out = "bindings.rs",
+        bash = """
+            $(exe fbsource//third-party/rust/bindgen:bindgen) --header "$SRCS" --out $OUT
+        """,
+        srcs = [header],
+        visibility = [],
+    )
+    _rust_library(
+        name = name,
+        mapped_srcs = {
+            ":{}--bindings.rs".format(name): "src/lib.rs",
+        },
+        deps = kwargs.pop("cpp_deps", []),
+        visibility = kwargs.pop("visibility", []),
+    )
+
+def _buck_genrule(*args, **kwargs):
+    # This is unused in FB
+    kwargs.pop("flavor_config", None)
+    if "out" not in kwargs and "outs" not in kwargs:
+        kwargs["out"] = "out"
+    existing_labels = kwargs.get("labels", [])
+
+    # This hides these targets from being built by Pyre, which is beneficial as
+    # the majority of genrules in Antlir are related to image compilation and
+    # thus require root, which Pyre builds do not have
+    if "no_pyre" not in existing_labels:
+        kwargs["labels"] = existing_labels + ["no_pyre"]
+    _wrap_internal(native.genrule, args, kwargs)
+
+def _get_visibility(visibility = None):
+    # """
+    # Antlir build outputs should not be visible outside of antlir by default.
+    # This helps prevent our abstractions from leaking into other codebases as
+    # Antlir becomes more widely adopted.
+    # """
+    # package = native.package_name()
+
+    # # packages in antlir/staging are only allowed to be used by other targets in
+    # # antlir/staging
+    # if package == "antlir/staging" or package.startswith("antlir/staging/"):
+    #     return ["//antlir/staging/...", "//bot_generated/antlir/staging/..."]
+
+    if visibility:
+        return visibility
+
+    # if it's a consumer of antlir macros outside of antlir, default to public
+    return ["PUBLIC"]
+
+def _rust_library(*, name: str, **kwargs):
+    unittests = kwargs.pop("unittests", True)
+    if unittests:
+        _rust_unittest(name = name + "-unittests", **kwargs)
+    kwargs["name"] = name
+    kwargs.pop("autocargo", None)
+    kwargs.pop("link_style", None)
+    _wrap_internal(native.rust_library, [], kwargs)
+
+def _rust_unittest(*args, **kwargs):
+    kwargs.pop("nodefaultlibs", None)
+    kwargs.pop("allocator", None)
+    _wrap_internal(native.rust_test, args, kwargs)
+
+def _wrap_internal(fn, args, kwargs):
+    """
+    Wrap a build target rule with some default attributes.
+    """
+
+    label_arg = "labels"
+
+    # Callers outside of this module can specify  `label_arg`, in which
+    # case it's read-only, so generate a new list with its contents.
+    # We pull off both `labels` and `tags` just to make sure that we get both
+    # and then recombine them into the expected arg name.
+    kwargs[label_arg] = kwargs.pop("labels", []) + kwargs.pop("tags", [])
+
+    # Antlir build outputs should not be visible outside of antlir by default. This
+    # helps prevent our abstractions from leaking into other codebases as Antlir
+    # becomes more widely adopted.
+    kwargs["visibility"] = _get_visibility(kwargs.pop("visibility", []))
+
+    fn(*args, **kwargs)
